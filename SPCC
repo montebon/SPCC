@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPCC Files</title>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
+
+  <style>
+    :root {
+      --blue:#1e3a8a;
+      --light-blue:#3b82f6;
+      --yellow:#facc15;
+      --bg:#f4f8ff;
+    }
+
+    body {
+      margin:0;
+      font-family:Arial;
+      background:var(--bg);
+    }
+
+    .navbar {
+      background:var(--blue);
+      color:white;
+      padding:15px;
+      display:flex;
+      justify-content:space-between;
+    }
+
+    .container {
+      max-width:1000px;
+      margin:30px auto;
+    }
+
+    .card {
+      background:white;
+      padding:20px;
+      border-radius:15px;
+      margin-bottom:20px;
+      box-shadow:0 10px 20px rgba(0,0,0,0.1);
+    }
+
+    .files {
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+      gap:15px;
+    }
+
+    .file {
+      background:white;
+      padding:15px;
+      border-radius:12px;
+      box-shadow:0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    button {
+      padding:8px 12px;
+      border:none;
+      border-radius:8px;
+      cursor:pointer;
+      margin-top:5px;
+    }
+
+    .upload {background:var(--light-blue);color:white;}
+    .delete {background:red;color:white;}
+    .download {background:var(--yellow);}
+  </style>
+</head>
+<body>
+
+<div class="navbar">
+  <div>📁 SPCC Files</div>
+  <div>
+    Samuel<br>
+    09565513508<br>
+    montebonsamuel03@yahoo.com
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="card">
+    <input type="file" id="fileInput">
+    <button class="upload" onclick="uploadFile()">Upload</button>
+  </div>
+
+  <div class="files" id="files"></div>
+
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+  import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDtUkdKBPyTVoSPPXEZ39gz3vi4-mhcYDE",
+    authDomain: "spcc-files.firebaseapp.com",
+    projectId: "spcc-files",
+    storageBucket: "spcc-files.firebasestorage.app",
+    messagingSenderId: "800985608393",
+    appId: "1:800985608393:web:33ff573b4dd2c875f05d18"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const storage = getStorage(app);
+  const db = getFirestore(app);
+
+  const filesDiv = document.getElementById("files");
+
+  async function loadFiles() {
+    filesDiv.innerHTML = "";
+    const querySnapshot = await getDocs(collection(db, "files"));
+
+    querySnapshot.forEach(docSnap => {
+      const data = docSnap.data();
+
+      const div = document.createElement("div");
+      div.className = "file";
+
+      div.innerHTML = `
+        <strong>${data.name}</strong><br>
+        <button class="download">Download</button>
+        <button class="delete">Delete</button>
+      `;
+
+      div.querySelector(".download").onclick = () => {
+        window.open(data.url);
+      };
+
+      div.querySelector(".delete").onclick = async () => {
+        await deleteObject(ref(storage, data.path));
+        await deleteDoc(doc(db, "files", docSnap.id));
+        loadFiles();
+      };
+
+      filesDiv.appendChild(div);
+    });
+  }
+
+  window.uploadFile = async function () {
+    const file = document.getElementById("fileInput").files[0];
+    if (!file) return alert("Select file");
+
+    const storageRef = ref(storage, "files/" + file.name);
+
+    await uploadBytes(storageRef, file);
+    const url = await getDownloadURL(storageRef);
+
+    await addDoc(collection(db, "files"), {
+      name: file.name,
+      url: url,
+      path: "files/" + file.name
+    });
+
+    loadFiles();
+  };
+
+  loadFiles();
+</script>
+
+</body>
+</html>
